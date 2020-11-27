@@ -28,27 +28,18 @@ def test_simple():
     """ create a simple Fixture instance
     """
     # set up + assert; make sure there are no exceptions
-    sut = fixture.Fixture(__file__, auto_search=False)
+    sut = fixture.Fixture(__file__)
 
 def test_simple_parse():
     """ create a config like dict and see if it gets parsed
     """
-    # set up
-    test_name = "test_input"
-    sut = fixture.Fixture(__file__, auto_search=False, classes={
-        "Mock" : LoadedMock,
-    })
-    sut.props = {
-        test_name : {
-            "type" : "Mock",
-        },
-    }
+    # se
     # execute
     sut._logger.info("start execute")
     sut._initialize()
     # verify
-    nt.assert_true(isinstance(sut.devs[0], LoadedMock))
-    nt.assert_equals(sut.devs[0].name, test_name)
+    assert(isinstance(sut.devs[0], LoadedMock))
+    assert sut.devs[0].name== test_name
 
 class LoadedMock(object):
     def __init__(self, name="wrong", *args, **kwargs):

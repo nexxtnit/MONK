@@ -10,53 +10,52 @@
 # 3 of the License, or (at your option) any later version.
 #
 
-import collections
-
-from nose import tools as nt
+from collections import defaultdict
+import pytest
 from monk_tf import conn
 
 
 def test_simplest():
-    """ conn: create the simplest possible AConnection
-    """
+    """conn: create the simplest possible AConnection"""
     # execute
-    sut = conn.ConnectionBase('')
+    sut = conn.ConnectionBase("")
     # verify
-    nt.ok_(sut)
+    assert sut
+
 
 def test_send_echo():
-    """ conn: send echo 123 and receive 123
-    """
+    """conn: send echo 123 and receive 123"""
     # setup
-    sut = MockConn(name='', out="123")
+    sut = MockConn(name="", out="123")
     expected_retcode = 0
     expected_out = "123"
     # execute
     retcode, out = sut.cmd("echo 123", do_retcode=False)
     # verify
-    nt.eq_(out, expected_out)
+    assert (out, expected_out)
+
 
 @nt.raises(AttributeError)
 def test_close_successfully():
-    """ conn: after closing there's no connection any more
-    """
+    """conn: after closing there's no connection any more"""
     # setup
-    sut = MockConn(name='', out="123")
+    sut = MockConn(name="", out="123")
     # execute
     sut.close()
     # verify
     sut._exp
 
+
 # does it recover?
 
-class MockConn(conn.ConnectionBase):
 
+class MockConn(conn.ConnectionBase):
     def __init__(self, *args, **kwargs):
         self._exp = Exp()
         self._exp.before = kwargs.pop("out", None)
         self._exp.after = ""
         super(MockConn, self).__init__(*args, **kwargs)
-        self._calls = collections.defaultdict(list)
+        self._calls = defaultdict(list)
         self.prompt = self._exp.before
 
     def wait_for_prompt(*args, **kwargs):
@@ -74,6 +73,7 @@ class MockConn(conn.ConnectionBase):
     @property
     def exp(self):
         return self._exp
+
 
 class Exp(object):
     def close(self):

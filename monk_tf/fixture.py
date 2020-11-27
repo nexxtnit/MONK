@@ -80,7 +80,6 @@ from os import environ
 import os.path as op
 import sys
 import logging
-import collections
 import time
 import io
 import traceback
@@ -101,61 +100,73 @@ logger = logging.getLogger(__name__)
 #
 ############
 
+
 class AFixtureException(gp.MonkException):
-    """ Base class for exceptions of the fixture layer.
+    """Base class for exceptions of the fixture layer.
 
     If you want to make sure that you catch all exceptions that are related
     to this layer, you should catch *AFixtureExceptions*. This also means
     that if you extend this list of exceptions you should inherit from this
     exception and not from :py:exc:`~exceptions.Exception`.
     """
+
     pass
+
 
 class NoDevsChosenException(AFixtureException):
-    """ If the use_devs attribute is not set this is raised
-    """
+    """If the use_devs attribute is not set this is raised"""
+
     pass
+
 
 class NoSectypeException(AFixtureException):
-    """ If no name can be derived from parsing a section
-    """
+    """If no name can be derived from parsing a section"""
+
     pass
 
+
 class NoDevicesDefinedException(AFixtureException):
-    """ is raised when we found out that there are no devices.
+    """is raised when we found out that there are no devices.
 
     Currently it makes no sense to use a fixture without devices.
     """
+
     pass
+
 
 class AParseException(AFixtureException):
-    """ Base class for exceptions concerning parsing errors.
-    """
+    """Base class for exceptions concerning parsing errors."""
+
     pass
+
 
 class CantParseException(AFixtureException):
-    """ is raised when a Fixture cannot parse a given file.
-    """
+    """is raised when a Fixture cannot parse a given file."""
+
     pass
+
 
 class NoPropsException(AFixtureException):
-    """ is raised when
-    """
+    """is raised when"""
+
     pass
+
 
 class NoDeviceException(AFixtureException):
-    """ is raised when a :py:clas:`~monk_tf.fixture.Fixture` requires a device but has none.
-    """
+    """is raised when a :py:clas:`~monk_tf.fixture.Fixture` requires a device but has none."""
+
     pass
+
 
 class WrongNameException(AFixtureException):
-    """ is raised when no devs with a given name could be found.
-    """
+    """is raised when no devs with a given name could be found."""
+
     pass
 
+
 class UnknownTypeException(AFixtureException):
-    """ Handler Type was not recognized
-    """
+    """Handler Type was not recognized"""
+
     pass
 
 
@@ -165,18 +176,20 @@ class UnknownTypeException(AFixtureException):
 #
 ##############################################################
 
+
 class LogManager(gp.MonkObject):
-    """ managing configuration and setup of logging mechanics
+    """managing configuration and setup of logging mechanics
 
     Might strongly interact with your nose config or similar.
     """
 
     def __init__(self, **config):
         super(LogManager, self).__init__(
-                name=config.pop("name",None),
-                module=__name__,
+            name=config.pop("name", None),
+            module=__name__,
         )
         self.log("load LogManager with config:" + str(config))
+
 
 class LogHandler(gp.MonkObject):
 
@@ -191,8 +204,8 @@ class LogHandler(gp.MonkObject):
 
     def __init__(self, name, sink, target, format, level):
         super(LogHandler, self).__init__(
-                name=name,
-                module=__name__,
+            name=name,
+            module=__name__,
         )
         self.sink = sink
         self.target = self.config_subs(target)
@@ -205,23 +218,26 @@ class LogHandler(gp.MonkObject):
         self.handler.setLevel(self._LOGLEVELS[self.level])
         logging.getLogger(self.target).setLevel(self._LOGLEVELS[self.level])
         self.log("set format:{}".format(self.format))
-        self.handler.setFormatter(logging.Formatter(
-            fmt=self.format,
-        ))
-        self.log("register at logger '{}'".format(
-            self.target,
-        ))
+        self.handler.setFormatter(
+            logging.Formatter(
+                fmt=self.format,
+            )
+        )
+        self.log(
+            "register at logger '{}'".format(
+                self.target,
+            )
+        )
         logging.getLogger(self.target).addHandler(self.handler)
         self.post_register()
 
     def config_subs(self, txt, subs=None):
-        """ replace the strings in the config that we have reasonable values for
-        """
+        """replace the strings in the config that we have reasonable values for"""
         substitutes = subs or {
-                "testcase" : gp.find_testname(),
-                "rootlogger" : "",
-                "suitename" : environ.get("SUITE", "suite"),
-                "datetime" : datetime.datetime.now().strftime("%y%m%d-%H%M%S"),
+            "testcase": gp.find_testname(),
+            "rootlogger": "",
+            "suitename": environ.get("SUITE", "suite"),
+            "datetime": datetime.datetime.now().strftime("%y%m%d-%H%M%S"),
         }
         self.log("replaced subs:{}".format(substitutes))
         return txt % substitutes
@@ -236,11 +252,14 @@ class LogHandler(gp.MonkObject):
         return "{}{}".format(
             self.__class__.__name__,
             {
-                "sink" : self.sink,
-                "target" : self.target,
-                "format" : self.format,
-                "level" : self.level,
-                "allHandlersOfMyTarget" : ["me" if h==self.handler else h for h in logging.getLogger(self.target).handlers],
+                "sink": self.sink,
+                "target": self.target,
+                "format": self.format,
+                "level": self.level,
+                "allHandlersOfMyTarget": [
+                    "me" if h == self.handler else h
+                    for h in logging.getLogger(self.target).handlers
+                ],
             },
         )
 
@@ -255,23 +274,23 @@ class StreamHandler(LogHandler):
         self.log("stream:" + str(sys.stdout))
         self.handler = logging.StreamHandler(stream)
 
+
 class FileHandler(LogHandler):
     def pre_register(self):
         self.handler = logging.FileHandler(self.config_subs(self.sink))
 
 
-
 class Fixture(gp.MonkObject):
-    """ Creates :term:`MONK` objects based on dictionary like objects.
+    """Creates :term:`MONK` objects based on dictionary like objects.
 
     Use this class if you want to seperate the details of your MONK objects
     from your code. Also use it if you want to write tests with it, as
     described above.
     """
 
-
-    def __init__(self, call_location, name=None,
-            fixture_locations=None, parsers=None):
+    def __init__(
+        self, call_location, name=None, fixture_locations=None, parsers=None
+    ):
         """
         :param call_location: the __file__ from where this is called.
 
@@ -290,7 +309,9 @@ class Fixture(gp.MonkObject):
         self.devs = {}
         self.ignore_exceptions = []
         self.props = config.ConfigObj()
-        self.fixture_locations = fixture_locations or self.default_fixturelocations()
+        self.fixture_locations = (
+            fixture_locations or self.default_fixturelocations()
+        )
         self.read(loc for loc in self.fixture_locations if op.isfile(loc))
 
     @property
@@ -308,16 +329,15 @@ class Fixture(gp.MonkObject):
             self.parsers = None
             return self._parsers
 
-
     def default_parsers(self):
         return {
-            "Device" : self.parse_device,
-            "conns" : self.parse_conns,
-            "SshConnection" : self.parse_sshconn,
-            "SerialConnection" : self.parse_serialconn,
-            "logging" : self.parse_logging,
-            "StreamHandler" : self.parse_streamhandler,
-            "FileHandler" : self.parse_filehandler,
+            "Device": self.parse_device,
+            "conns": self.parse_conns,
+            "SshConnection": self.parse_sshconn,
+            "SerialConnection": self.parse_serialconn,
+            "logging": self.parse_logging,
+            "StreamHandler": self.parse_streamhandler,
+            "FileHandler": self.parse_filehandler,
         }
 
     @parsers.setter
@@ -325,7 +345,7 @@ class Fixture(gp.MonkObject):
         self._parsers = parsers or self.default_parsers()
 
     def default_fixturelocations(self):
-        """ this is preferred over a list/dict
+        """this is preferred over a list/dict
 
         because some paths need to be set dynamically!
         """
@@ -336,7 +356,7 @@ class Fixture(gp.MonkObject):
         return locs
 
     def read(self, sources):
-        """ Read more data, either as a file name or as a parser.
+        """Read more data, either as a file name or as a parser.
 
         :param sources: a iterable of data sources; each is either a file name
                         or a :py:class:`~monk_tf.fixture.AParser` child class
@@ -354,28 +374,36 @@ class Fixture(gp.MonkObject):
         return self
 
     def _initialize(self):
-        """ Create :term:`MONK` objects based on self's properties.
-        """
-        self._logger.debug("initialize with props: " + str(json.dumps(self.props, indent=4)))
+        """Create :term:`MONK` objects based on self's properties."""
+        self._logger.debug(
+            "initialize with props: " + str(json.dumps(self.props, indent=4))
+        )
         if not self.props:
-            raise NoPropsException("have you created and added any fixture files?")
+            raise NoPropsException(
+                "have you created and added any fixture files?"
+            )
         parsed = {}
         for name, value in self.props.items():
             parsed[name] = self._parse_section(name, value)
         self.update(**parsed)
 
     def update(self, **kwargs):
-        """ update the externally manageable data of this fixture object
-        """
+        """update the externally manageable data of this fixture object"""
         self.testlogger = kwargs.pop("logging", self._logger)
         use_devs = kwargs.pop("use_devs", [])
-        self.use_devs = [use_devs] if isinstance(use_devs, str) else [devname.strip() for devname in use_devs if devname]
+        self.use_devs = (
+            [use_devs]
+            if isinstance(use_devs, str)
+            else [devname.strip() for devname in use_devs if devname]
+        )
         if not self.use_devs:
-            raise NoDevsChosenException("You need to set a use_devs property to your config file which contains a list of comma separated device names that are defined in your [[conns]] block")
-        self.devs = {n:d for n,d in kwargs.items()}
+            raise NoDevsChosenException(
+                "You need to set a use_devs property to your config file which contains a list of comma separated device names that are defined in your [[conns]] block"
+            )
+        self.devs = {n: d for n, d in kwargs.items()}
 
     def _find_sectype(self, name, section):
-        """ try to retrieve the section type, preferably by name
+        """try to retrieve the section type, preferably by name
 
         :param name: the name of the section and a possible source of the type
 
@@ -388,10 +416,12 @@ class Fixture(gp.MonkObject):
         try:
             return name if name in self.parsers else section.pop("type")
         except KeyError:
-            raise NoSectypeException("for section {}:\n{}".format(name, section))
+            raise NoSectypeException(
+                "for section {}:\n{}".format(name, section)
+            )
 
     def _parse_section(self, name, section):
-        """ parse a deep dictionary depth first, generate objects bottom up
+        """parse a deep dictionary depth first, generate objects bottom up
 
         :name: the name of the current section
         :section: the dictionary containing
@@ -399,21 +429,23 @@ class Fixture(gp.MonkObject):
         :return: the object that is generated by this section
         """
         try:
-            self._logger.debug("parse_section({},{},{})".format(
-                str(name),
-                type(section).__name__,
-                list(section.keys()),
-            ))
+            self._logger.debug(
+                "parse_section({},{},{})".format(
+                    str(name),
+                    type(section).__name__,
+                    list(section.keys()),
+                )
+            )
         except AttributeError as e:
             # duck tested that this is not a dcitionary.
             # Non dictionaries are normal types like str or int.
             # So they are just returned, because they don't need parsing.
             return section
         # sectype often means the resulting object type, e.g. SshConn
-        sectype=self._find_sectype(name, section)
+        sectype = self._find_sectype(name, section)
         # first parse section's properties, then apply them
         self.log("traverse subsections iteratively")
-        section = {k:self._parse_section(k,v) for k,v in section.items()}
+        section = {k: self._parse_section(k, v) for k, v in section.items()}
         self.log("create object for section")
         return self.parsers[sectype](name, sectype, section)
 
@@ -430,7 +462,7 @@ class Fixture(gp.MonkObject):
         return md.Device(**section)
 
     def parse_conns(self, name, sectype, section):
-        return {k:v for k,v in section.items()}
+        return {k: v for k, v in section.items()}
 
     def parse_logging(self, name, sectype, section):
         self.log("register all handlers")
@@ -447,7 +479,7 @@ class Fixture(gp.MonkObject):
         return FileHandler(**section)
 
     def tear_down(self):
-        """ Can be used for explicit destruction of managed objects.
+        """Can be used for explicit destruction of managed objects.
 
         This should be called in every :term:`test case` as the last step.
 
@@ -471,10 +503,12 @@ class Fixture(gp.MonkObject):
         if exception_type and exception_type not in self.ignore_exceptions:
             buff = io.StringIO()
             traceback.print_tb(tb, file=buff)
-            self.testlog("\n\n{}:{}:{}:\n{}".format(
-                gp.find_testname(),
-                exception_type.__name__,
-                exception_val,
-                buff.getvalue(),
-            ))
+            self.testlog(
+                "\n\n{}:{}:{}:\n{}".format(
+                    gp.find_testname(),
+                    exception_type.__name__,
+                    exception_val,
+                    buff.getvalue(),
+                )
+            )
         self.tear_down()

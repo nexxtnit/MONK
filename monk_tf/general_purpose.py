@@ -18,13 +18,15 @@ This module contains the base classes and possibly other useful stuff
 import logging
 import inspect
 
+
 class MonkException(Exception):
-    """ base class for all monk_tf exceptions
-    """
+    """base class for all monk_tf exceptions"""
+
     pass
 
-class MonkObject(object):
-    """ base class for all Monkery
+
+class MonkObject:
+    """base class for all Monkery
 
     mostly handles name setting and the object specific logging
     """
@@ -50,26 +52,31 @@ class MonkObject(object):
         try:
             return self._logger
         except AttributeError as e:
-            self._logger = logging.getLogger("{}.{}".format(
-                self.module,
-                name or self.__class__.__name__,
-            ))
+            self._logger = logging.getLogger(
+                "{}.{}".format(
+                    self.module,
+                    name or self.__class__.__name__,
+                )
+            )
             return self._logger
 
     @name.setter
     def name(self, name):
-        self._logger = logging.getLogger("{}.{}".format(
-            self.module,
-            name or self.__class__.__name__,
-        ))
+        self._logger = logging.getLogger(
+            "{}.{}".format(
+                self.module,
+                name or self.__class__.__name__,
+            )
+        )
 
     def testlog(self, msg):
-        """ sends a info-level message to the logger
+        """sends a info-level message to the logger
 
         This method is used mostly in the test cases, that a smaller version
         of it is quite comfortable.
         """
         self.testlogger.info(msg)
+
 
 _LOGFINDERS = ["test_", "setup"]
 

@@ -10,22 +10,21 @@
 # as published by the Free Software Foundation; either version
 # 3 of the License, or (at your option) any later version.
 #
-
-from nose import tools as nt
+import pytest
 from monk_tf import dev
 from monk_tf import conn
 
+
 def test_simple():
-    """ dev: create Device
-    """
+    """dev: create Device"""
     # execute
     sut = dev.Device()
     # assert
-    nt.ok_(sut, "should have an object of dev.Device")
+    assert (sut, dev.Device())
+
 
 def test_send_cmd():
-    """ dev: send cmd to EchoConnection
-    """
+    """dev: send cmd to EchoConnection"""
     # prepare
     test_input = "just some text"
     expected_out = test_input
@@ -33,12 +32,12 @@ def test_send_cmd():
     # execute
     out = sut.cmd(test_input)
     # assert
-    nt.eq_(expected_out, out)
+    pytest.approx(expected_out, out)
 
-@nt.raises(dev.CantHandleException)
+
+@pytest.raises(dev.CantHandleException)
 def test_no_conn():
-    """ dev: let all connections fail
-    """
+    """dev: let all connections fail"""
     # prepare
     test_input = "no connection will succeed here"
     expected_out = test_input
@@ -47,10 +46,12 @@ def test_no_conn():
     out = sut.cmd(test_input)
     # catch exception
 
-class EchoConn(object):
+
+class EchoConn:
     def cmd(*args, **kwargs):
         return kwargs.pop("msg", "NOTHING")
 
-class DefectiveConn(object):
+
+class DefectiveConn:
     def cmd(*args, **kwargs):
         raise Exception("can't handle that")
