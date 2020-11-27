@@ -1,0 +1,23 @@
+[[source]]
+url = "https://pypi.org/simple"
+verify_ssl = true
+name = "pypi"
+
+[packages]
+configobj = "==5.0.6"
+coverage = "==3.7.1"
+docutils = "==0.12"
+nose = "==1.3.4"
+nosexcover = "==1.0.10"
+pexpect = "==4.5"
+pyte = "==0.4.9"
+six = "==1.9.0"
+MarkupSafe = "==0.23"
+Pygments = "==2.0.2"
+Sphinx = "==3.0.4"
+
+[requires]
+python_version = "3.7"
+
+[dev-packages]
+black = "==20.8b1"
