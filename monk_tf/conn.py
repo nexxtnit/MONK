@@ -40,8 +40,7 @@ from pexpect import pxssh
 from pexpect import spawn
 from pexpect import fdpexpect
 import pyte
-
-import monk_tf.general_purpose as gp
+import monk_tf
 
 ############
 #
@@ -49,51 +48,44 @@ import monk_tf.general_purpose as gp
 #
 ############
 
-class AConnectionException(gp.MonkException):
-    """ Base class for Exceptions from this module
-    """
-    pass
+
+class AConnectionException(monk_tf.general_purpose.MonkException):
+    """Base class for Exceptions from this module"""
+
 
 class OutputParseException(AConnectionException):
-    """ is raised when cmd output cannot be parsed to utf8 for further processing
-    """
-    pass
+    """is raised when cmd output cannot be parsed to utf8 for further processing"""
+
 
 class BccException(AConnectionException):
-    """ is raised to explain some BCC behaviour
-    """
-    pass
+    """is raised to explain some BCC behaviour"""
+
 
 class NoBCCException(BccException):
-    """ is raised when the BCC class does not find the drbcc tool needed for
-        execution.
+    """is raised when the BCC class does not find the drbcc tool needed for
+    execution.
     """
-    pass
+
 
 class CantCreateConnException(AConnectionException):
-    """ is raised when even several attempt were not able to create a connection.
-    """
-    pass
+    """is raised when even several attempt were not able to create a connection."""
+
 
 class NoRetcodeException(AConnectionException):
-    """ is raised when the output doesn't contain a retcode for unknown reasons.
-    """
-    pass
+    """is raised when the output doesn't contain a retcode for unknown reasons."""
+
 
 class TimeoutException(AConnectionException):
-    """ is raised if retrying something was not successful until its timeout
-    """
-    pass
+    """is raised if retrying something was not successful until its timeout"""
+
 
 class CmdFailedException(AConnectionException):
-    """ is raised in an eval_cmd() request if the returncode was != 0. The returncode can be parsed from the Exception's message.
-    """
-    pass
+    """is raised in an eval_cmd() request if the returncode was != 0. The returncode can be parsed from the Exception's message."""
+
 
 class RetriesExceededException(AConnectionException):
-    """ when trying something repeatedly didn't succeed but a more specific reason is not available
-    """
-    pass
+    """when trying something repeatedly didn't succeed but a more specific reason is not available"""
+
 
 #############
 #
@@ -101,8 +93,9 @@ class RetriesExceededException(AConnectionException):
 #
 #############
 
-class ConnectionBase(gp.MonkObject):
-    """ is the base class for all connections.
+
+class ConnectionBase(monk_tf.general_purpose.MonkObject):
+    """is the base class for all connections.
 
     Don't instantiate this class directly.
 
@@ -112,10 +105,15 @@ class ConnectionBase(gp.MonkObject):
     Extending this class requires to implement _get_exp() and _login().
     """
 
-
-
-    def __init__(self, name, target, user, pw,
-            default_timeout=None, first_prompt_timeout=None):
+    def __init__(
+        self,
+        name,
+        target,
+        user,
+        pw,
+        default_timeout=None,
+        first_prompt_timeout=None,
+    ):
         """
         :param name: the name of this connection and its corresponding logger
 
@@ -132,20 +130,21 @@ class ConnectionBase(gp.MonkObject):
 
         """
         super(ConnectionBase, self).__init__(
-                name=name,
-                module=__name__,
+            name=name,
+            module=__name__,
         )
         self.target = target
         self.user = user
         self.pw = pw
         self.default_timeout = default_timeout or 30
-        self.first_prompt_timeout = int(first_prompt_timeout) if first_prompt_timeout else 120
-
+        self.first_prompt_timeout = (
+            int(first_prompt_timeout) if first_prompt_timeout else 120
+        )
 
     @property
     def exp(self):
-        """ the pexpect object - Don't bother with this if you don't know what
-                                 it means already. Really!
+        """the pexpect object - Don't bother with this if you don't know what
+        it means already. Really!
         """
         self.log("retrieve pexpect object")
         try:
@@ -158,26 +157,28 @@ class ConnectionBase(gp.MonkObject):
             return self._exp
 
     def _expect(self, pattern, timeout=-1, searchwindowsize=-1):
-        """ a wrapper for :pexpect:meth:`spawn.expect`
-        """
-        self.log("expect({},{},{})".format(
-            str(pattern),
-            timeout,
-            searchwindowsize,
-        ))
+        """a wrapper for :pexpect:meth:`spawn.expect`"""
+        self.log(
+            "expect({},{},{})".format(
+                str(pattern),
+                timeout,
+                searchwindowsize,
+            )
+        )
         try:
             out = self.exp.expect(pattern, timeout, searchwindowsize)
             self.log("_EXP OUTPUT: '{}'".format(out))
             self.log("expect succeeded.")
         except Exception as e:
-            self.log("expect failed with '{}'".format(
-                e.__class__.__name__,
-            ))
+            self.log(
+                "expect failed with '{}'".format(
+                    e.__class__.__name__,
+                )
+            )
             raise e
 
     def _send(self, s):
-        """ a wrapper for :pexpect:meth:`spawn.send`
-        """
+        """a wrapper for :pexpect:meth:`spawn.send`"""
         self.log("send('{}' to {})".format(s, self.target))
         try:
             self.exp.send(s)
@@ -187,42 +188,44 @@ class ConnectionBase(gp.MonkObject):
             raise e
 
     def _sendline(self, s=""):
-        """ a wrapper for :pexpect:meth:`spawn.sendline`
-        """
+        """a wrapper for :pexpect:meth:`spawn.sendline`"""
         self.log("sendline('{}' to {})".format(s, self.target))
         try:
             self.exp.sendline(s)
             self.log("sendline succeeded.")
         except Exception as e:
-            self.log("sendline failed.(has pexpect? {})".format(
-                        "yes" if self.exp else "no",
-            ))
+            self.log(
+                "sendline failed.(has pexpect? {})".format(
+                    "yes" if self.exp else "no",
+                )
+            )
             raise e
 
     def expect_prompt(self, timeout=None):
-        """ enter + look in the output for what is currently set as self.prompt
-        """
+        """enter + look in the output for what is currently set as self.prompt"""
         self.log("expect prompt")
         self._sendline("")
         self._expect(self.prompt, timeout=timeout or self.default_timeout)
 
     def wait_for_prompt(self, timeout=-1):
-        """ this method continuously retries to get a working connection
+        """this method continuously retries to get a working connection
 
         (by means of self.expect_prompt()) and raises an exception otherwise
 
         :param timeout: how long we retry
         """
-        self.log("wait_for_prompt({})".format(
-            timeout,
-        ))
+        self.log(
+            "wait_for_prompt({})".format(
+                timeout,
+            )
+        )
         end_time = time.time() + timeout
         while time.time() <= end_time:
             self.log("try prompt")
             try:
                 self.expect_prompt(timeout)
                 self.log("ready")
-                self._exp.after = b''
+                self._exp.after = b""
                 return
             except (pexpect.EOF, pexpect.TIMEOUT) as e:
                 self.log("could not retreive prompt")
@@ -230,10 +233,11 @@ class ConnectionBase(gp.MonkObject):
                 self.log("sleep before retry")
                 time.sleep(3)
         raise TimeoutException(
-                "was not able to find a prompt after {} seconds".format(timeout))
+            "was not able to find a prompt after {} seconds".format(timeout)
+        )
 
     def cmd(self, msg, timeout=None, expect=None, do_retcode=True):
-        """ send a shell command and retreive its output.
+        """send a shell command and retreive its output.
 
         :param msg: the shell command
 
@@ -244,49 +248,62 @@ class ConnectionBase(gp.MonkObject):
         :param do_retcode: boolean which says whether or not a returncode
                            should be retreived.
         """
-        self.log("START cmd({})".format(json.dumps({
-            "msg" : msg,
-            "expect" : str(expect),
-            "timeout" : timeout or self.default_timeout,
-            "do_retcode" : do_retcode,
-        }, indent=4)))
+        self.log(
+            "START cmd({})".format(
+                json.dumps(
+                    {
+                        "msg": msg,
+                        "expect": str(expect),
+                        "timeout": timeout or self.default_timeout,
+                        "do_retcode": do_retcode,
+                    },
+                    indent=4,
+                )
+            )
+        )
         self.wait_for_prompt(self.first_prompt_timeout)
         prepped_msg = self._prep_cmdmessage(msg, do_retcode)
         self._sendline(prepped_msg)
         try:
-            self._expect(expect or self.prompt, timeout=timeout or self.default_timeout)
+            self._expect(
+                expect or self.prompt, timeout=timeout or self.default_timeout
+            )
         except (pexpect.EOF, pexpect.TIMEOUT) as e:
             self.log("caught EOF/TIMEOUT on last expect; closing connections")
             self.close()
             raise e
         rc, out = self._prep_cmdoutput(
-                out=self.exp.before.decode(),
-                cmd_expect=prepped_msg,
-                do_retcode=do_retcode,
+            out=self.exp.before.decode(),
+            cmd_expect=prepped_msg,
+            do_retcode=do_retcode,
         )
-        self.logger.info("SUCCESSFULLY SENT CMD: cmd('{}') rc='{}' result='{}' expect-match='{}'".format(
-            str(msg),
-            str(rc),
-            str(out),
-            str(self.exp.after).replace("b'","").replace("'",""),
-        ))
+        self.logger.info(
+            "SUCCESSFULLY SENT CMD: cmd('{}') rc='{}' result='{}' expect-match='{}'".format(
+                str(msg),
+                str(rc),
+                str(out),
+                str(self.exp.after).replace("b'", "").replace("'", ""),
+            )
+        )
         if self.exp.after in (pexpect.TIMEOUT, pexpect.EOF):
             self.log("connection is down, let's close it")
             self.close()
         return rc, out
 
     def _prep_cmdmessage(self, msg, do_retcode=True):
-        """ prepares a command message before it is delivered to pexpect
+        """prepares a command message before it is delivered to pexpect
 
         It might add retreiving a returncode and strips unnecessary whitespace.
 
         :param msg: the command message to prepare
         :param do_retcode: if the request for the retcode should be appended
         """
-        self.log("prep_msg({},{})".format(
-            msg,
-            do_retcode,
-        ))
+        self.log(
+            "prep_msg({},{})".format(
+                msg,
+                do_retcode,
+            )
+        )
         # If the connection is a shell, you might want a returncode.
         # If it is not (like drbcc) then you might have no way to retreive a
         # returncode. Therefore make a decision here.
@@ -294,15 +311,19 @@ class ConnectionBase(gp.MonkObject):
         # strip each line for unnecessary whitespace and delete empty lines
         if not isinstance(msg, str):
             raise Exception("what's msg: '{}'".format(msg))
-        prepped = "\n".join(line.strip() for line in msg.split("\n") if line.strip())
-        out = prepped+get_retcode
-        self.log("prepped:'{}'".format(
-            out,
-        ))
+        prepped = "\n".join(
+            line.strip() for line in msg.split("\n") if line.strip()
+        )
+        out = prepped + get_retcode
+        self.log(
+            "prepped:'{}'".format(
+                out,
+            )
+        )
         return out
 
     def _prep_cmdoutput(self, out, cmd_expect, do_retcode=True):
-        """ prepare the pexpect output for returning to the user
+        """prepare the pexpect output for returning to the user
 
         Removing all the unnecessary "\r" characters and separates the
         returncode if one is requested.
@@ -311,29 +332,36 @@ class ConnectionBase(gp.MonkObject):
         :param cmd_expect: the command string which should be filtered out
         :param do_retcode: if there's a retcode to find or not
         """
-        self.log("prep_out({},{})".format(
-            out,
-            do_retcode,
-        ))
+        self.log(
+            "prep_out({},{})".format(
+                out,
+                do_retcode,
+            )
+        )
         if not out:
             self.log("out was empty and therefore couldn't be prepped.")
             return None, out
         # replace Terminal command chars
-        stream = pyte.Stream()
-        capture = Capture()
-        stream.attach(capture, only=["draw", "linefeed", "tab"])
-        try:
-            stream.feed(out)
-        except UnicodeError as e:
-            raise OutputParseException(
-                "failed to parse output to utf8, necessary for special character handler. Error: " + str(e))
-        prepped_out = str(capture)
+        # PWR: no more 'only' in attach()
+        # stream = pyte.Stream()
+        # capture = Capture()
+        # stream.attach(capture, only=["draw", "linefeed", "tab"])
+        # try:
+        #    stream.feed(out)
+        # except UnicodeError as e:
+        #    raise OutputParseException(
+        #        "failed to parse output to utf8, necessary for special character handler. Error: " + str(e))
+        # prepped_out = str(capture)
+        prepped_out = out
+        # PWR: END
         if do_retcode:
             try:
                 match = re.search("\n?<retcode>(\d+)</retcode>.*$", prepped_out)
-                self.log("found retcode string '{}'".format(
-                    match.group(0),
-                ))
+                self.log(
+                    "found retcode string '{}'".format(
+                        match.group(0),
+                    )
+                )
                 retcode = int(match.group(1))
                 prepped_out = prepped_out.replace(match.group(0), "").strip()
                 self.log("prepped with retcode")
@@ -341,69 +369,92 @@ class ConnectionBase(gp.MonkObject):
             except (AttributeError, IndexError) as e:
                 self.log(str(self._exp))
                 self.logger.exception(e)
-                raise NoRetcodeException("failed to find retcode with '{}'. Formatted output:'{}'".format(
-                            e.__class__.__name__,
-                            prepped_out,
-                ))
+                raise NoRetcodeException(
+                    "failed to find retcode with '{}'. Formatted output:'{}'".format(
+                        e.__class__.__name__,
+                        prepped_out,
+                    )
+                )
         else:
             self.log("prepped without retcode")
             return None, prepped_out
 
     def eval_cmd(self, msg, timeout=None, expect=None, do_retcode=True):
-        """ evaluate cmd's returncode and therefore don't return it
-        """
-        self.log("eval_cmd({})".format(json.dumps({
-            "msg" : str(msg),
-            "timeout" : timeout,
-            "expect" : str(expect),
-            "do_retcode" : str(do_retcode),
-        }, indent=4)))
+        """evaluate cmd's returncode and therefore don't return it"""
+        self.log(
+            "eval_cmd({})".format(
+                json.dumps(
+                    {
+                        "msg": str(msg),
+                        "timeout": timeout,
+                        "expect": str(expect),
+                        "do_retcode": str(do_retcode),
+                    },
+                    indent=4,
+                )
+            )
+        )
         rc, out = self.cmd(msg, timeout, expect)
         if rc not in (0, None):
             raise CmdFailedException("rc:{};".format(rc))
         return out
 
     def wait_for(self, msg, retries=3, sleep=5, timeout=20):
-        """ repeatedly send shell command until output is found
+        """repeatedly send shell command until output is found
 
         :param msg: the shell command that should be executed
         :param retries(3): how often should we try it. should be at least 1, otherwise the loop is not executed.
         :param sleep(5): the time to wait between requests
         :param timeout(20): the timeout used for every cmd() request
         """
-        self.log("wait_for({})".format(json.dumps({
-            "msg" : msg,
-            "retries" : retries,
-            "sleep" : sleep,
-            "timeout" : timeout,
-        }, indent=4)))
+        self.log(
+            "wait_for({})".format(
+                json.dumps(
+                    {
+                        "msg": msg,
+                        "retries": retries,
+                        "sleep": sleep,
+                        "timeout": timeout,
+                    },
+                    indent=4,
+                )
+            )
+        )
         last_rc, out = None, None
         for i in range(retries):
-            self.log("wait for successful cmd('{}'), retries {}".format(
-                msg,
-                i,
-            ))
+            self.log(
+                "wait for successful cmd('{}'), retries {}".format(
+                    msg,
+                    i,
+                )
+            )
             try:
                 out = self.eval_cmd(msg, timeout)
                 return out
             except (CmdFailedException, pexpect.TIMEOUT, pexpect.EOF) as e:
-                self.log("failed with output '{}', waiting for {} seconds".format(
-                    out,
-                    sleep,
-                ))
+                self.log(
+                    "failed with output '{}', waiting for {} seconds".format(
+                        out,
+                        sleep,
+                    )
+                )
                 time.sleep(sleep)
                 last_rc = str(e)
-        raise RetriesExceededException(json.dumps({
-            "msg" : str(msg),
-            "retries" : str(retries),
-            "last returncode" : str(last_rc),
-            "last out" : str(out),
-            "sleep" : str(sleep),
-        }, indent=4))
+        raise RetriesExceededException(
+            json.dumps(
+                {
+                    "msg": str(msg),
+                    "retries": str(retries),
+                    "last returncode": str(last_rc),
+                    "last out": str(out),
+                    "sleep": str(sleep),
+                },
+                indent=4,
+            )
+        )
 
     def close(self):
-        """ close the connection and get rid of the inner objects
-        """
+        """close the connection and get rid of the inner objects"""
         self.log("close connection")
         try:
             if hasattr(self, "_exp") and self._exp:
@@ -412,11 +463,9 @@ class ConnectionBase(gp.MonkObject):
             self.log("successfully closed connection")
         except AttributeError:
             self.log("connection already closed")
-            pass
 
     def __del__(self):
-        """ will make sure to close and log it's destruction
-        """
+        """will make sure to close and log it's destruction"""
         self.log("getting deleted")
         try:
             self.close()
@@ -425,15 +474,19 @@ class ConnectionBase(gp.MonkObject):
 
 
 class SerialConn(ConnectionBase):
-    """ implements a serial connection.
-    """
+    """implements a serial connection."""
 
-    def __init__(self, name, port, user, pw,
-            prompt="\r?\n?[^\n]*#",
-            default_timeout=None,
-            first_prompt_timeout=None,
-            speed=115200,
-        ):
+    def __init__(
+        self,
+        name,
+        port,
+        user,
+        pw,
+        prompt="\r?\n?[^\n]*#",
+        default_timeout=None,
+        first_prompt_timeout=None,
+        speed=115200,
+    ):
         """
         :param name: the name of the connection
         :param port: the path to the device file that is used for this connection
@@ -443,12 +496,12 @@ class SerialConn(ConnectionBase):
         """
         self.speed = speed
         super(SerialConn, self).__init__(
-                name = name,
-                target = port,
-                user = user,
-                pw = pw,
-                default_timeout=default_timeout,
-                first_prompt_timeout=first_prompt_timeout,
+            name=name,
+            target=port,
+            user=user,
+            pw=pw,
+            default_timeout=default_timeout,
+            first_prompt_timeout=first_prompt_timeout,
         )
         self.speed = speed
         self._prompt = prompt
@@ -472,18 +525,26 @@ class SerialConn(ConnectionBase):
         while time.time() < end_time:
             self.log("try creating fdspawn object")
             try:
-                spawn = fdpexpect.fdspawn(os.open(self.port, os.O_RDWR|os.O_NONBLOCK|os.O_NOCTTY))
+                spawn = fdpexpect.fdspawn(
+                    os.open(self.port, os.O_RDWR | os.O_NONBLOCK | os.O_NOCTTY)
+                )
                 self.log("sendline")
                 spawn.sendline()
-                #PWR: self.log("expect prompt or login string")
-                self.log("expect prompt '{}' or login string".format(self.prompt))
-                result = spawn.expect(["(?i)"+self.prompt, "(?i)login: ", "(?i)User:"])
-                self.log("got ({}) with capture: '{}'".format(
-                    result,
-                    str(spawn.after),
-                ))
-                #if result == 1:
-                if result >= 1:  #more than one login pattern
+                # PWR: self.log("expect prompt or login string")
+                self.log(
+                    "expect prompt '{}' or login string".format(self.prompt)
+                )
+                result = spawn.expect(
+                    ["(?i)" + self.prompt, "(?i)login: ", "(?i)User:"]
+                )
+                self.log(
+                    "got ({}) with capture: '{}'".format(
+                        result,
+                        str(spawn.after),
+                    )
+                )
+                # if result == 1:
+                if result >= 1:  # more than one login pattern
                     self.fail = True
                     self.log("because not logged in yet, do that")
                     spawn.sendline(self.user)
@@ -492,44 +553,74 @@ class SerialConn(ConnectionBase):
                     self.log("send pw")
                     spawn.sendline(self.pw)
                     self.log("expect prompt")
-                    spawn.expect("(?i)"+self.prompt)
+                    spawn.expect("(?i)" + self.prompt)
                 return spawn
             except (pexpect.EOF, pexpect.TIMEOUT) as e:
                 self.log("wait a little before retry creating pxssh object")
                 time.sleep(3)
-        raise CantCreateConnException("tried to reach {} for '{}' seconds".format(
-            self.target, self.first_prompt_timeout))
+        raise CantCreateConnException(
+            "tried to reach {} for '{}' seconds".format(
+                self.target, self.first_prompt_timeout
+            )
+        )
 
     def _login(self, user=None, pw=None):
         self.logger.debug("serial._login({},{})".format(user, pw))
 
+
 class pxsshWorkaround(pxssh.pxssh):
     """ just to add that echo=False """
 
-    def __init__(self, timeout=30, maxread=2000,
-        searchwindowsize=None,logfile=None, cwd=None, env=None, echo=True):
-        spawn.__init__(self, None, timeout=timeout, maxread=maxread,
-                searchwindowsize=searchwindowsize, logfile=logfile, cwd=cwd,
-                env=env, echo=echo)
-        self.name = '<pxssh>'
+    def __init__(
+        self,
+        timeout=30,
+        maxread=2000,
+        searchwindowsize=None,
+        logfile=None,
+        cwd=None,
+        env=None,
+        echo=True,
+    ):
+        spawn.__init__(
+            self,
+            None,
+            timeout=timeout,
+            maxread=maxread,
+            searchwindowsize=searchwindowsize,
+            logfile=logfile,
+            cwd=cwd,
+            env=env,
+            echo=echo,
+        )
+        self.name = "<pxssh>"
         self.UNIQUE_PROMPT = "\[PEXPECT\][\$\#] "
         self.PROMPT = self.UNIQUE_PROMPT
         self.PROMPT_SET_SH = "PS1='[PEXPECT]\$ '"
         self.PROMPT_SET_CSH = "set prompt='[PEXPECT]\$ '"
-        self.SSH_OPTS = ("-o'RSAAuthentication=no'"
-                + " -o 'PubkeyAuthentication=no'")
+        self.SSH_OPTS = (
+            "-o'RSAAuthentication=no'" + " -o 'PubkeyAuthentication=no'"
+        )
+        #PWR: new in pexpect 4.8
+        self.options = dict(RSAAuthentication="no", PubkeyAuthentication="no")
+        self.debug_command_string = False
+        #PWR: END
+
 
 class SshConn(ConnectionBase):
-    """ implements an ssh connection.
-    """
+    """implements an ssh connection."""
 
-    def __init__(self, name, host, user, pw,
-            prompt=None,
-            default_timeout=None,
-            force_password=True,
-            first_prompt_timeout=None,
-            login_timeout=10,
-        ):
+    def __init__(
+        self,
+        name,
+        host,
+        user,
+        pw,
+        prompt=None,
+        default_timeout=None,
+        force_password=True,
+        first_prompt_timeout=None,
+        login_timeout=10,
+    ):
         """
         :param host: the URL to the device
         :param user: the user name for the login
@@ -537,17 +628,19 @@ class SshConn(ConnectionBase):
         :param prompt: the default prompt to check for
         """
         super(SshConn, self).__init__(
-                name=name,
-                target=host,
-                user=user,
-                pw=pw,
-                default_timeout=default_timeout,
-                first_prompt_timeout=first_prompt_timeout,
+            name=name,
+            target=host,
+            user=user,
+            pw=pw,
+            default_timeout=default_timeout,
+            first_prompt_timeout=first_prompt_timeout,
         )
         self.force_password = force_password
         self.login_timeout = int(login_timeout)
         if prompt:
-            self.logger.warning("ssh connection ignores attribute prompt, because it sets its own prompt")
+            self.logger.warning(
+                "ssh connection ignores attribute prompt, because it sets its own prompt"
+            )
 
     @property
     def host(self):
@@ -563,36 +656,42 @@ class SshConn(ConnectionBase):
         return self.exp.PROMPT
 
     def cp(self, src_path, trgt_path, retry=5, sleep=5, timeout=10):
-        """ send files via scp to target device
+        """send files via scp to target device
 
         :param src_path: the path to the file on the host machine
         :param trgt_path: the path of the file on the target machine
         """
-        self.log("send file from {} to {} on the target device".format(
-            src_path,
-            trgt_path,
-        ))
-        for i in range(1, retry+1):
-            spawn = pexpect.spawnu("scp {} {}@{}:{}".format(
+        self.log(
+            "send file from {} to {} on the target device".format(
                 src_path,
-                self.user,
-                self.target,
                 trgt_path,
-            ))
+            )
+        )
+        for i in range(1, retry + 1):
+            spawn = pexpect.spawnu(
+                "scp {} {}@{}:{}".format(
+                    src_path,
+                    self.user,
+                    self.target,
+                    trgt_path,
+                )
+            )
             spawn.expect("assword: ")
             spawn.sendline(self.pw)
             spawn.expect(pexpect.EOF, timeout=timeout)
             spawn.close()
-            if spawn.exitstatus == 0 and spawn.signalstatus == None:
+            if spawn.exitstatus == 0 and spawn.signalstatus is None:
                 self.log("sending file succeeded")
                 return
             else:
-                self.log("sending file failed (exit:{};signal:{};waitpidcode:{}), retry ".format(
-                    spawn.exitstatus,
-                    spawn.signalstatus,
-                    spawn.status,
-                    i,
-                ))
+                self.log(
+                    "sending file failed (exit:{};signal:{};waitpidcode:{}), retry ".format(
+                        spawn.exitstatus,
+                        spawn.signalstatus,
+                        spawn.status,
+                        i,
+                    )
+                )
 
     def _get_exp(self):
         self.log("create pxssh object")
@@ -612,8 +711,11 @@ class SshConn(ConnectionBase):
             except (pxssh.ExceptionPxssh, pexpect.EOF, pexpect.TIMEOUT) as e:
                 self.log("wait a little before retry creating pxssh object")
                 time.sleep(3)
-        raise CantCreateConnException("tried to reach {} for '{}' seconds".format(
-            self.target, self.first_prompt_timeout))
+        raise CantCreateConnException(
+            "tried to reach {} for '{}' seconds".format(
+                self.target, self.first_prompt_timeout
+            )
+        )
 
     def expect_prompt(self, timeout=None):
         self.log("ssh expect prompt")
@@ -626,13 +728,16 @@ class SshConn(ConnectionBase):
             if hasattr(self, "_exp"):
                 self._exp.logout()
         except (Exception) as e:
-            self.log("while logging out caught the following exception, can often be ignored")
+            self.log(
+                "while logging out caught the following exception, can often be ignored"
+            )
             self.logger.exception(e)
             del self._exp
         super(SshConn, self).close()
 
-class Capture(object):
-    """ a helper class
+
+class Capture:
+    """a helper class
 
     that supports :class:`ConnectionBase` in handling
     Terminal special chars.
