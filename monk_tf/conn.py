@@ -455,22 +455,24 @@ class ConnectionBase(monk_tf.general_purpose.MonkObject):
 
     def close(self):
         """close the connection and get rid of the inner objects"""
-        self.log("close connection")
+        # self.log("close connection")
         try:
             if hasattr(self, "_exp") and self._exp:
                 self._exp.close()
                 del self._exp
-            self.log("successfully closed connection")
+            # self.log("successfully closed connection")
         except AttributeError:
-            self.log("connection already closed")
+            # self.log("connection already closed")
+            pass
 
     def __del__(self):
         """will make sure to close and log it's destruction"""
-        self.log("getting deleted")
+        # self.log("getting deleted")
         try:
             self.close()
         finally:
-            self.log("bye.")
+            # self.log("bye.")
+            pass
 
 
 class SerialConn(ConnectionBase):
@@ -600,10 +602,10 @@ class pxsshWorkaround(pxssh.pxssh):
         self.SSH_OPTS = (
             "-o'RSAAuthentication=no'" + " -o 'PubkeyAuthentication=no'"
         )
-        #PWR: new in pexpect 4.8
+        # PWR: new in pexpect 4.8
         self.options = dict(RSAAuthentication="no", PubkeyAuthentication="no")
         self.debug_command_string = False
-        #PWR: END
+        # PWR: END
 
 
 class SshConn(ConnectionBase):
