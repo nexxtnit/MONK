@@ -17,7 +17,7 @@ Pygments = "==2.0.2"
 Sphinx = "==3.0.4"
 
 [requires]
-python_version = "3.7"
+python_version = "3.9"
 
 [dev-packages]
 black = "==20.8b1"
